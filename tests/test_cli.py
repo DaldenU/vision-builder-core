@@ -2,9 +2,24 @@
 
 import json
 from pathlib import Path
+import numpy as np
 import pytest
 
-from vision_builder.cli import generate_synthetic_frame, main, run_benchmark
+from vision_builder.cli import (
+    annotate_frame,
+    create_synthetic_conveyor_video,
+    generate_synthetic_frame,
+    main,
+    process_video_stream,
+    run_benchmark,
+)
+from vision_builder.detector import (
+    BoundingBox,
+    DefectItem,
+    DefectSeverity,
+    DetectionResult,
+)
+from vision_builder.telemetry import TelemetryMetrics
 
 
 def test_generate_synthetic_frame() -> None:
@@ -56,3 +71,78 @@ def test_cli_sample_report_command(
     assert ret2 == 0
     out2 = capsys.readouterr().out
     assert "incident_id" in out2
+
+
+def test_annotate_frame() -> None:
+    frame = np.full((120, 160, 3), 150, dtype=np.uint8)
+    defects = [
+        DefectItem(
+            label="surface_flaw",
+            confidence=0.88,
+            bbox=BoundingBox(x_min=10, y_min=10, x_max=50, y_max=50),
+            severity=DefectSeverity.HIGH,
+        )
+    ]
+    res = DetectionResult(
+        frame_id="f1",
+        timestamp=100.0,
+        defects=defects,
+        inference_time_ms=2.5,
+        status="DEFECT_DETECTED",
+    )
+    metrics = TelemetryMetrics(
+        total_frames=1,
+        defective_frames=1,
+        defect_rate_pct=100.0,
+        avg_latency_ms=2.5,
+        p95_latency_ms=2.5,
+        min_latency_ms=2.5,
+        max_latency_ms=2.5,
+        throughput_fps=50.0,
+        runtime_seconds=0.02,
+    )
+    annotated = annotate_frame(frame, res, metrics)
+    assert annotated.shape == (120, 160, 3)
+
+
+def test_create_synthetic_conveyor_video(tmp_path: Path) -> None:
+    vid_file = tmp_path / "test_conveyor.mp4"
+    path = create_synthetic_conveyor_video(str(vid_file), num_frames=10)
+    assert Path(path).exists()
+    assert Path(path).stat().st_size > 0
+
+
+def test_process_video_stream_demo(tmp_path: Path) -> None:
+    out_video = tmp_path / "out.mp4"
+    out_report = tmp_path / "report.json"
+    ret = process_video_stream(
+        source="demo",
+        output_path=str(out_video),
+        display=False,
+        max_frames=15,
+        export_report=str(out_report),
+    )
+    assert ret == 0
+    assert out_video.exists()
+
+
+def test_cli_process_video_command(tmp_path: Path) -> None:
+    out_video = tmp_path / "cli_out.mp4"
+    ret = main(
+        [
+            "process-video",
+            "--source",
+            "demo",
+            "--max-frames",
+            "10",
+            "--output",
+            str(out_video),
+        ]
+    )
+    assert ret == 0
+    assert out_video.exists()
+
+
+def test_process_video_invalid_source() -> None:
+    ret = process_video_stream(source="non_existent_path_404.mp4")
+    assert ret == 1
