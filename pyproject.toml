@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vision-builder-core"
+version = "0.1.0"
+description = "Core scientific computer vision processing, anomaly inference, and telemetry pipeline for Vision Builder CV-Ops"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Andasov Temirlan", email = "255395@astanait.edu.kz" }
+]
+keywords = ["computer-vision", "cv-ops", "scientific-computing", "defect-detection", "edge-computing", "telemetry"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+dependencies = [
+    "numpy>=1.24.0",
+    "opencv-python-headless>=4.7.0.72",
+    "pydantic>=2.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.4.0",
+    "bandit>=1.7.5",
+    "build>=0.10.0"
+]
+
+[project.scripts]
+vision-builder = "vision_builder.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vision_builder*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=vision_builder --cov-report=term-missing --cov-report=xml"
+testpaths = [
+    "tests"
+]
