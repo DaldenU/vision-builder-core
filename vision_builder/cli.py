@@ -66,7 +66,7 @@ def annotate_frame(
         "low": (255, 200, 0),
     }
 
-    for defect in result.defects:
+    for defect in result.defects[:25]:
         b = defect.bbox
         x1, y1 = int(b.x_min), int(b.y_min)
         x2, y2 = int(b.x_max), int(b.y_max)
@@ -164,7 +164,7 @@ def create_synthetic_conveyor_video(
         frame = np.full((height, width, 3), 160, dtype=np.uint8)
         offset = (i * 8) % 80
         for y in range(0, height, 80):
-            cv2.line(frame, (0, y + offset), (width, y + offset), (140, 140, 140), 2)
+            cv2.line(frame, (0, y + offset), (width, y + offset), (145, 145, 145), 1)
 
         part_x = int((i * 12) % (width + 200)) - 100
         part_y = height // 2 - 60
@@ -174,15 +174,15 @@ def create_synthetic_conveyor_video(
             frame,
             (part_x, part_y),
             (part_x + part_w, part_y + part_h),
-            (220, 220, 220),
+            (210, 210, 210),
             -1,
         )
         cv2.rectangle(
             frame,
             (part_x, part_y),
             (part_x + part_w, part_y + part_h),
-            (80, 80, 80),
-            2,
+            (185, 185, 185),
+            1,
         )
 
         # Inject surface flaw on specific conveyor cycles
@@ -204,6 +204,8 @@ def process_video_stream(
     display: bool = False,
     max_frames: Optional[int] = None,
     export_report: Optional[str] = None,
+    sensitivity: str = "medium",
+    min_area: Optional[float] = None,
 ) -> int:
     """Process video file or webcam stream with live anomaly detection."""
     temp_generated_video: Optional[str] = None
@@ -229,6 +231,7 @@ def process_video_stream(
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
 
     writer: Optional[cv2.VideoWriter] = None
     if output_path:
@@ -239,16 +242,31 @@ def process_video_stream(
     preprocessor = ImagePreprocessor(
         PreprocessingConfig(target_width=width, target_height=height)
     )
-    detector = DefectDetector(
-        DetectorConfig(confidence_threshold=0.45, min_defect_area_px=20.0)
-    )
+    detector_config = DetectorConfig(sensitivity=sensitivity)
+    if min_area is not None:
+        detector_config.min_defect_area_px = min_area
+    detector = DefectDetector(detector_config)
     telemetry = TelemetryTracker()
     report_builder = IncidentReportBuilder("Manufacturing_Cell_Live")
 
     frame_count = 0
     last_report = None
 
-    print(f"Processing video stream: {source} (Press 'q' in preview window to stop)...")
+    if display:
+        cv2.namedWindow("Vision Builder Edge CV-Ops Stream", cv2.WINDOW_NORMAL)
+        preview_w = min(1280, width)
+        preview_h = int(preview_w * (height / max(1, width)))
+        cv2.resizeWindow("Vision Builder Edge CV-Ops Stream", preview_w, preview_h)
+        print(
+            f"Displaying live inspection window for '{source}' "
+            "(Press 'q' or ESC in preview window to exit)..."
+        )
+    else:
+        tot_msg = f"({total_video_frames} frames)" if total_video_frames > 0 else ""
+        print(
+            f"Processing '{source}' in headless batch mode {tot_msg}...\n"
+            "  [Note: Pass --display to open the live interactive video window]"
+        )
 
     try:
         while True:
@@ -282,6 +300,16 @@ def process_video_stream(
                 if key == ord("q") or key == 27:  # 'q' or ESC
                     print("Stream stopped by user.")
                     break
+            elif frame_count % 50 == 0 or frame_count == 1:
+                cur_m = telemetry.get_metrics()
+                tot_lbl = f"/{total_video_frames}" if total_video_frames > 0 else ""
+                print(
+                    f"  -> Frame {frame_count}{tot_lbl} | "
+                    f"Latency: {result.inference_time_ms:.1f}ms | "
+                    f"FPS: {cur_m.throughput_fps:.1f} | "
+                    f"Defective: {cur_m.defective_frames} "
+                    f"({cur_m.defect_rate_pct:.1f}%)"
+                )
 
     finally:
         cap.release()
@@ -410,6 +438,19 @@ def main(argv: List[str] | None = None) -> int:
         default=None,
         help="Optional path to export final LLM JSON incident report",
     )
+    video_parser.add_argument(
+        "--sensitivity",
+        type=str,
+        choices=["low", "medium", "high"],
+        default="medium",
+        help="Detection sensitivity preset ('low', 'medium', 'high')",
+    )
+    video_parser.add_argument(
+        "--min-area",
+        type=float,
+        default=None,
+        help="Minimum defect contour area in pixels",
+    )
 
     report_parser = subparsers.add_parser(
         "sample-report", help="Generate a sample LLM incident prompt JSON"
@@ -434,6 +475,8 @@ def main(argv: List[str] | None = None) -> int:
             display=parsed.display,
             max_frames=parsed.max_frames,
             export_report=parsed.export_report,
+            sensitivity=parsed.sensitivity,
+            min_area=parsed.min_area,
         )
     elif parsed.command == "sample-report":
         frame = generate_synthetic_frame(inject_defect=True)

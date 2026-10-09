@@ -146,3 +146,39 @@ def test_cli_process_video_command(tmp_path: Path) -> None:
 def test_process_video_invalid_source() -> None:
     ret = process_video_stream(source="non_existent_path_404.mp4")
     assert ret == 1
+
+
+def test_cli_process_video_with_sensitivity(tmp_path: Path) -> None:
+    out_video = tmp_path / "cli_low.mp4"
+    ret = main(
+        [
+            "process-video",
+            "--source",
+            "demo",
+            "--max-frames",
+            "5",
+            "--sensitivity",
+            "low",
+            "--min-area",
+            "50.0",
+            "--output",
+            str(out_video),
+        ]
+    )
+    assert ret == 0
+    assert out_video.exists()
+
+
+def test_process_video_stream_display_mock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import cv2
+
+    monkeypatch.setattr(cv2, "namedWindow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(cv2, "resizeWindow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(cv2, "imshow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(cv2, "waitKey", lambda *args, **kwargs: ord("q"))
+    monkeypatch.setattr(cv2, "destroyAllWindows", lambda *args, **kwargs: None)
+
+    ret = process_video_stream(source="demo", display=True, max_frames=2)
+    assert ret == 0
