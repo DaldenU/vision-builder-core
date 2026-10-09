@@ -60,3 +60,11 @@ dmypy.json
 *~
 .DS_Store
 Thumbs.db
+
+# Media outputs and test videos
+*.mp4
+*.avi
+*.mkv
+demo_conveyor_temp.mp4
+annotated_preview.mp4
+
