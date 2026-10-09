@@ -45,7 +45,7 @@ def generate_synthetic_frame(
             color=(30, 30, 30),
             thickness=-1,
         )
-    return frame
+    return np.asarray(frame, dtype=np.uint8)
 
 
 def run_benchmark(iterations: int = 100, inject_rate: float = 0.2) -> int:
