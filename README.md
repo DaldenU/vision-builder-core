@@ -1,6 +1,6 @@
 # Vision Builder Core (`vision-builder-core`)
 
-[![CI/CD Pipeline](https://github.com/DaldenU/vision-builder-core/actions/workflows/ci.yml/badge.svg)](https://github.com/DaldenU/vision-builder-core/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/DaldenU/vision-builder-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DaldenU/vision-builder-core/actions/workflows/ci.yml)
 [![Python Versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Type Checked: Mypy](https://img.shields.io/badge/type%20checked-mypy-informational.svg)](https://mypy-lang.org/)
