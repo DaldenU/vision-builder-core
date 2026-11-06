@@ -41,19 +41,18 @@ pipeline {
             steps {
                 echo "=== [Stage 2] Running Code Formatting, Linting, Type-Check & SAST ==="
                 sh '''
-                    python3 -m venv .venv_ci
+                    python3 -m venv --system-site-packages .venv_ci
                     . .venv_ci/bin/activate
-                    pip install --quiet --upgrade pip
-                    pip install --quiet -e .[dev]
+                    pip install --no-deps -e .
 
                     echo "--- Running Flake8 PEP-8 Linter ---"
-                    flake8 vision_builder tests --max-line-length=88 --extend-ignore=E203,W503
+                    python3 -m flake8 vision_builder tests --max-line-length=88 --extend-ignore=E203,W503
 
                     echo "--- Running Mypy Static Type Verification ---"
-                    mypy vision_builder tests
+                    python3 -m mypy vision_builder tests
 
                     echo "--- Running Bandit DevSecOps SAST Scan ---"
-                    bandit -r vision_builder -ll
+                    python3 -m bandit -r vision_builder -ll
                 '''
             }
         }
@@ -63,7 +62,7 @@ pipeline {
                 echo "=== [Stage 3] Executing Pytest Scientific Unit Test Suite ==="
                 sh '''
                     . .venv_ci/bin/activate
-                    pytest --cov=vision_builder \
+                    python3 -m pytest --cov=vision_builder \
                            --cov-report=term-missing \
                            --cov-report=xml:coverage.xml \
                            --junitxml=test-results.xml
