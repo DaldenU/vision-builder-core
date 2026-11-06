@@ -231,3 +231,39 @@ graph LR
 ## 10. License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+---
+
+## 11. Docker, Jenkins CI/CD & Kubernetes Deployment (Assignment 5)
+
+### 11.1 Build and Run with Docker
+```bash
+# Build the container image
+docker build -t vision-builder-core:latest .
+
+# Run containerized CV-Ops benchmark
+docker run --rm vision-builder-core:latest vision-builder benchmark --iterations 50 --defect-rate 0.2
+
+# Run the HTTP health & inference microservice on port 8090
+docker run -d --name vision-builder-staging -p 8090:8000 vision-builder-core:latest
+curl http://localhost:8090/health
+curl http://localhost:8090/infer
+```
+
+### 11.2 Declarative Jenkins Pipeline (`Jenkinsfile`)
+The repository includes a 7-stage declarative [`Jenkinsfile`](Jenkinsfile) that automates:
+1. **Checkout & Environment Info**: Pulls latest Git commit and verifies Python/Docker versions.
+2. **Static Analysis & DevSecOps Audit**: Executes `flake8`, `mypy`, and `bandit -r vision_builder -ll`.
+3. **Automated Unit Tests & Coverage**: Runs `pytest` (37 unit tests, 96% coverage) and publishes JUnit XML reports (`test-results.xml`).
+4. **Build Docker Image**: Builds and tags `vision-builder-core:${BUILD_NUMBER}` and `daldenu/vision-builder-core:latest`.
+5. **Container Scientific Benchmark**: Verifies containerized execution via `vision-builder benchmark`.
+6. **Push Image to Docker Hub**: Pushes tagged images when registry credentials are configured.
+7. **Continuous Deployment (CD) & Smoke Test**: Deploys the container to the staging test server (`port 8090`), verifies `/health` and `/infer` endpoints, and validates Kubernetes manifests (`k8s/deployment.yaml`).
+
+### 11.3 Kubernetes Deployment (`Minikube` / `k3s`)
+```bash
+kubectl apply -f k8s/deployment.yaml
+kubectl get pods -l app=vision-builder-core
+kubectl get svc vision-builder-core-svc
+```
